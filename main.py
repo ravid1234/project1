@@ -13,7 +13,7 @@ pygame.display.set_caption("Space Invaders - Python Web")
 
 # Colors & Font
 WHITE, BLACK, RED, GREEN = (255, 255, 255), (0, 0, 0), (255, 0, 0), (0, 255, 0)
-font = pygame.font.SysFont("Arial", 64)
+font = pygame.font.SysFont(None, 64)
 
 # Player setup
 player_rect = pygame.Rect(375, 540, 50, 40)
