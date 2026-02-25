@@ -33,11 +33,30 @@ async def main():
     running = True
     game_over = False
     won = False
+    waiting_to_start = True # This satisfies the browser's "Media User Action"
     clock = pygame.time.Clock()
 
     while running:
         screen.fill(BLACK)
 
+        # --- 1. START SCREEN (Bypasses "Stuck" Loading) ---
+        if waiting_to_start:
+            msg = "CLICK TO START"
+            text_surface = font.render(msg, True, WHITE)
+            screen.blit(text_surface, (SCREEN_WIDTH//2 - 160, SCREEN_HEIGHT//2 - 32))
+            
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    running = False
+                # First click/key starts the engine and allows sound/logic
+                if event.type == pygame.MOUSEBUTTONDOWN or event.type == pygame.KEYDOWN:
+                    waiting_to_start = False
+            
+            pygame.display.flip()
+            await asyncio.sleep(0) # Keep browser responsive
+            continue
+
+        # --- 2. EVENT HANDLING ---
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
@@ -45,8 +64,9 @@ async def main():
                 if event.key == pygame.K_SPACE:
                     bullets.append(pygame.Rect(player_rect.centerx - 2, player_rect.top, 5, 15))
 
+        # --- 3. GAME LOGIC ---
         if not game_over:
-            # Movement
+            # Player Movement
             keys = pygame.key.get_pressed()
             if keys[pygame.K_LEFT] and player_rect.left > 0:
                 player_rect.x -= player_speed
@@ -65,7 +85,6 @@ async def main():
                 enemy.x += enemy_speed
                 if enemy.right >= SCREEN_WIDTH or enemy.left <= 0:
                     move_down = True
-
             if move_down:
                 enemy_speed *= -1
                 for enemy in enemies:
@@ -87,14 +106,13 @@ async def main():
                 won = False
                 game_over = True
 
-        # Drawing
+        # --- 4. DRAWING ---
         pygame.draw.rect(screen, GREEN, player_rect)
         for bullet in bullets:
             pygame.draw.rect(screen, WHITE, bullet)
         for enemy in enemies:
             pygame.draw.rect(screen, RED, enemy)
 
-        # Show Message if game is over
         if game_over:
             msg = "YOU WIN!" if won else "GAME OVER"
             color = GREEN if won else RED
@@ -102,11 +120,11 @@ async def main():
             screen.blit(text_surface, (SCREEN_WIDTH//2 - 140, SCREEN_HEIGHT//2 - 32))
 
         pygame.display.flip()
-        await asyncio.sleep(0) # CRITICAL for web
+        await asyncio.sleep(0) # CRITICAL: Allows browser to run the loop
         clock.tick(60)
 
     pygame.quit()
     sys.exit()
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(main()) # Proper web entry point
