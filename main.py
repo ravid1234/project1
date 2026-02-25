@@ -1,5 +1,5 @@
 import pygame
-import asyncio # Required for web
+import asyncio
 import sys
 
 # Initialize pygame
@@ -11,8 +11,9 @@ SCREEN_HEIGHT = 600
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("Space Invaders - Python Web")
 
-# Colors
+# Colors & Font
 WHITE, BLACK, RED, GREEN = (255, 255, 255), (0, 0, 0), (255, 0, 0), (0, 255, 0)
+font = pygame.font.SysFont("Arial", 64)
 
 # Player setup
 player_rect = pygame.Rect(375, 540, 50, 40)
@@ -27,10 +28,11 @@ for row in range(5):
     for col in range(10):
         enemies.append(pygame.Rect(col * 60 + 50, row * 50 + 50, 40, 30))
 
-async def main(): # Pygbag requires the loop in an async function
+async def main():
     global enemy_speed
-    score = 0
     running = True
+    game_over = False
+    won = False
     clock = pygame.time.Clock()
 
     while running:
@@ -39,43 +41,51 @@ async def main(): # Pygbag requires the loop in an async function
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-            if event.type == pygame.KEYDOWN:
+            if event.type == pygame.KEYDOWN and not game_over:
                 if event.key == pygame.K_SPACE:
                     bullets.append(pygame.Rect(player_rect.centerx - 2, player_rect.top, 5, 15))
 
-        # Movement
-        keys = pygame.key.get_pressed()
-        if keys[pygame.K_LEFT] and player_rect.left > 0:
-            player_rect.x -= player_speed
-        if keys[pygame.K_RIGHT] and player_rect.right < SCREEN_WIDTH:
-            player_rect.x += player_speed
+        if not game_over:
+            # Movement
+            keys = pygame.key.get_pressed()
+            if keys[pygame.K_LEFT] and player_rect.left > 0:
+                player_rect.x -= player_speed
+            if keys[pygame.K_RIGHT] and player_rect.right < SCREEN_WIDTH:
+                player_rect.x += player_speed
 
-        # Bullet movement
-        for bullet in bullets[:]:
-            bullet.y -= 7
-            if bullet.bottom < 0:
-                bullets.remove(bullet)
+            # Bullet movement
+            for bullet in bullets[:]:
+                bullet.y -= 7
+                if bullet.bottom < 0:
+                    bullets.remove(bullet)
 
-        # Enemy movement
-        move_down = False
-        for enemy in enemies:
-            enemy.x += enemy_speed
-            if enemy.right >= SCREEN_WIDTH or enemy.left <= 0:
-                move_down = True
-
-        if move_down:
-            enemy_speed *= -1
+            # Enemy movement
+            move_down = False
             for enemy in enemies:
-                enemy.y += 10
+                enemy.x += enemy_speed
+                if enemy.right >= SCREEN_WIDTH or enemy.left <= 0:
+                    move_down = True
 
-        # Collision detection
-        for bullet in bullets[:]:
-            for enemy in enemies[:]:
-                if bullet.colliderect(enemy):
-                    if bullet in bullets: bullets.remove(bullet)
-                    enemies.remove(enemy)
-                    score += 10
-                    break
+            if move_down:
+                enemy_speed *= -1
+                for enemy in enemies:
+                    enemy.y += 10
+
+            # Collision detection
+            for bullet in bullets[:]:
+                for enemy in enemies[:]:
+                    if bullet.colliderect(enemy):
+                        if bullet in bullets: bullets.remove(bullet)
+                        enemies.remove(enemy)
+                        break
+
+            # Win/Loss Logic
+            if not enemies:
+                won = True
+                game_over = True
+            if any(enemy.bottom >= player_rect.top for enemy in enemies):
+                won = False
+                game_over = True
 
         # Drawing
         pygame.draw.rect(screen, GREEN, player_rect)
@@ -84,18 +94,18 @@ async def main(): # Pygbag requires the loop in an async function
         for enemy in enemies:
             pygame.draw.rect(screen, RED, enemy)
 
-        # Game Over Check
-        if not enemies or any(enemy.bottom >= player_rect.top for enemy in enemies):
-            running = False
+        # Show Message if game is over
+        if game_over:
+            msg = "YOU WIN!" if won else "GAME OVER"
+            color = GREEN if won else RED
+            text_surface = font.render(msg, True, color)
+            screen.blit(text_surface, (SCREEN_WIDTH//2 - 140, SCREEN_HEIGHT//2 - 32))
 
         pygame.display.flip()
-        
-        # CRITICAL: Allow browser to update
-        await asyncio.sleep(0) 
+        await asyncio.sleep(0) # CRITICAL for web
         clock.tick(60)
 
     pygame.quit()
     sys.exit()
 
-# Run the game
 asyncio.run(main())
